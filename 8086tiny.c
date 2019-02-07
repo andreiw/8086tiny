@@ -14,6 +14,8 @@
 #include <fcntl.h>
 #endif
 
+#include "cp437.h"
+
 #ifndef NO_GRAPHICS
 #include "SDL.h"
 #endif
@@ -254,6 +256,26 @@ void audio_callback(void *data, unsigned char *stream, int len)
 	spkr_en = io_ports[0x61] & 3;
 }
 #endif
+
+static size_t
+code_to_utf8(unsigned char *const buffer,
+             const unsigned short code)
+{
+	if (code <= 0x7F) {
+		buffer[0] = code;
+		return 1;
+	}
+	if (code <= 0x7FF) {
+		buffer[0] = 0xC0 | (code >> 6);    /* 110xxxxx */
+		buffer[1] = 0x80 | (code & 0x3F);  /* 10xxxxxx */
+		return 2;
+	}
+
+	buffer[0] = 0xE0 | (code >> 12);           /* 1110xxxx */
+	buffer[1] = 0x80 | ((code >> 6) & 0x3F);   /* 10xxxxxx */
+	buffer[2] = 0x80 | (code & 0x3F);          /* 10xxxxxx */
+	return 3;
+}
 
 // Emulator entry point
 int main(int argc, char **argv)
@@ -664,8 +686,13 @@ int main(int argc, char **argv)
 			OPCODE 48: // Emulator-specific 0F xx opcodes
 				switch ((char)i_data0)
 				{
-					OPCODE_CHAIN 0: // PUTCHAR_AL
-						write(1, regs8, 1)
+					OPCODE_CHAIN 0: { // PUTCHAR_AL
+						unsigned char buf[3];
+						unsigned len;
+
+						len = code_to_utf8(buf, cp437_to_utf16[*regs8]);
+						write(1, buf, len);
+					}
 					OPCODE 1: // GET_RTC
 						time(&clock_buf);
 						ftime(&ms_clock);

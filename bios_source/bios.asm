@@ -544,8 +544,20 @@ int7:	; Whenever the user presses a key, INT 7 is called by the emulator.
 
   sdl_key_down:
 
-	mov	[es:this_keystroke-bios_data], al
-		
+        ;;
+        ;; BEGIN
+        ;;
+        ;; AndreiW 07-10-2018: handle ALT+key correctly,
+        ;; without emitting key itself
+        ;;
+        test    byte [es:keyflags1-bios_data], 8
+        jz      save_keystroke
+        mov     al, 0
+  save_keystroke:
+        mov     [es:this_keystroke-bios_data], al
+        ;;
+        ;; END
+        ;;
   sdl_not_in_buf:
 
 	mov	al, bh
@@ -3396,10 +3408,18 @@ vmem_next_line:
 cont:
 	push	cs
 	pop	ds
-
-	cmp	byte [es:di], 0		; Ignore null characters in video memory
-	je	disp_loop
-
+        ;;
+        ;; BEGIN
+        ;;
+        ;; AndreiW 07-11-2018: don't skip over NUL
+        ;; characters, by commenting below lines.
+        ;; Fixes garbage in qbasic help.
+        ;;
+        ;; cmp     byte [es:di], 0         ; Ignore null characters in video memory
+        ;; je      disp_loop
+        ;;
+        ;; END
+        ;;
 	mov	ax, bp
 	mov	bx, si
 	mov	dh, al
