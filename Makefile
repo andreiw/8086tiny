@@ -24,5 +24,9 @@ no_graphics: 8086tiny.c
 	${CC} 8086tiny.c ${OPTS_NOGFX} ${OPTS_ALL} -o 8086tiny
 	strip 8086tiny
 
+no_graphics_static: 8086tiny.c
+	${CC} -static 8086tiny.c ${OPTS_NOGFX} ${OPTS_ALL} -o 8086tiny.static
+	strip 8086tiny.static
+
 clean:
 	rm 8086tiny
