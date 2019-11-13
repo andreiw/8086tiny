@@ -7,7 +7,7 @@
 # 8086tiny_slowcpu improves graphics performance on slow platforms (e.g. Raspberry Pi)
 # no_graphics compiles without SDL graphics/sound
 
-OPTS_ALL=-O3 -fsigned-char -std=c99
+OPTS_ALL=-O3 -fsigned-char -std=c99 -Wno-unused-result
 OPTS_SDL=`sdl-config --cflags --libs`
 OPTS_NOGFX=-DNO_GRAPHICS
 OPTS_SLOWCPU=-DGRAPHICS_UPDATE_DELAY=25000

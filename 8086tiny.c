@@ -8,6 +8,7 @@
 #include <time.h>
 #include <sys/timeb.h>
 #include <memory.h>
+#include <stdio.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -146,7 +147,7 @@
 #ifdef _WIN32
 #define KEYBOARD_DRIVER kbhit() && (mem[0x4A6] = getch(), pc_interrupt(7))
 #else
-#define KEYBOARD_DRIVER read(0, mem + 0x4A6, 1) && (int8_asap = (mem[0x4A6] == 0x1B), pc_interrupt(7))
+#define KEYBOARD_DRIVER  read(0, mem + 0x4A6, 1) > 0 && (int8_asap = (mem[0x4A6] == 0x1B), pc_interrupt(7))
 #endif
 
 // Keyboard driver for SDL
@@ -290,6 +291,8 @@ int main(int argc, char **argv)
 	SDL_OpenAudio(&sdl_audio, 0);
 #endif
 
+	fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL) | O_NONBLOCK);
+
 	// regs16 and reg8 point to F000:0, the start of memory-mapped registers. CS is initialised to F000
 	regs16 = (unsigned short *)(regs8 = mem + REGS_BASE);
 	regs16[REG_CS] = 0xF000;
@@ -302,14 +305,18 @@ int main(int argc, char **argv)
 	regs8[REG_DL] = ((argc > 3) && (*argv[3] == '@')) ? argv[3]++, 0x80 : 0;
 
 	// Open BIOS (file id disk[2]), floppy disk image (disk[1]), and hard disk image (disk[0]) if specified
-	for (file_index = 3; file_index;)
+	for (file_index = 3; file_index;) {
 		disk[--file_index] = *++argv ? open(*argv, 32898) : 0;
+	}
 
 	// Set CX:AX equal to the hard disk image size, if present
 	CAST(unsigned)regs16[REG_AX] = *disk ? lseek(*disk, 0, 2) >> 9 : 0;
 
 	// Load BIOS image into F000:0100, and set IP to 0100
-	read(disk[2], regs8 + (reg_ip = 0x100), 0xFF00);
+	if (read(disk[2], regs8 + (reg_ip = 0x100), 0xFF00) <= 0) {
+                perror("couldn't read BIOS image");
+		return 1;
+	}
 
 	// Load instruction decoding helper table
 	for (int i = 0; i < 20; i++)
